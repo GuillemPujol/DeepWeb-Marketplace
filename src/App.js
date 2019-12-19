@@ -11,6 +11,8 @@ import Category from "./Category";
 import List from "./List";
 import Login from "./Login";
 import Navigation from "./Navigation";
+import Book from "../../../MarketplaceDEMO/book-market/client/src/Book";
+
 
 
 class App extends Component {
@@ -153,16 +155,16 @@ class App extends Component {
         return (
 
             <React.Fragment>
-                <h1>Book shop</h1>
+                <h1>Used Book Marketplace</h1>
 
                 <div className="container">
 
-                    {(this.Auth.getUsername() === "elisa") ? <Navigation></Navigation> : 'Not admin user'}
+                    {(this.Auth.getUsername() === "Guillem") ? <Navigation></Navigation> : 'Not admin user'}
 
 
                     {this.Auth.getUsername() ?
                         <small>Logged in: {this.Auth.getUsername()}.
-                            <Link to="/">Post a book</Link>
+                            <Link to="/">Post a book for sale!</Link>
                             <button
                                 onClick={(event) => {this.logout(event)}}>Logout.</button>
                         </small>
@@ -173,23 +175,44 @@ class App extends Component {
 
 
                 <Router>
-
-                    <Categories path="/" categories={this.state.categories}
-                                askCategory={(text) => this.askCategory(text)}/>
-
+                    <Categories path="/" categories={this.props.categories} />
                     <Category
-                        addBook={(id, book) => this.addBook(id, book)}
-                        path="/category/:id"
-                        getCategory={id => this.getCategory(id)}>
-                    </Category>
+                        path="/categories/:catName"
+                        getCategory={catName =>
+                            this.props.categories.find(
+                                e => e.categoryName === catName.replace(/\+/g, " ")
+                            )
+                        }
+                    />
+
+                    <Book
+                        path="/book/:id"
+                        categories={this.props.categories.filter(x => x.books)}
+
+                        getBookCategory={id =>
+                            this.props.categories.find(category =>
+                                category.books.some(book => book._id === id)
+                            )
+                        }
+                        //
+                    />
+                    <CreateBook
+                        path="/book/AadABook"
+                        categories={this.props.categories.map(x => ({
+                            categoryName: x.categoryName,
+                            _id: x._id
+                        }))}
+                        onCreateBook={(book, categoryId) =>
+                            this.props.AddABook(book, categoryId)
+                        }
+                    />
                     <Login
-                        path="/login" login={(username, password) => this.login(username, password) }>
-                    </Login>
-                    <Admin path="/admin"
-                           categories={this.state.categories}
-                           askCategory={(text) => this.askCategory(text)}></Admin>
-
-
+                        path="/login"
+                        login={(username, password) =>
+                            this.props.login(username, password)
+                        }
+                        infoMsg={this.state.infoMsg}
+                    />
                 </Router>
 
             </React.Fragment>
