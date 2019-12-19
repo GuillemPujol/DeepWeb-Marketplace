@@ -1,50 +1,200 @@
 import React from 'react';
+import { Link, Router } from "@reach/router";
+import { connect } from "react-redux";
 import './App.css';
+
 import AddABook from "./AddABook";
+import Admin from "./Admin";
+import AuthService from './AuthService';
+import Categories from "./Categories";
+import Category from "./Category";
 import List from "./List";
+import Login from "./Login";
+import Navigation from "./Navigation";
 
 
 class App extends Component {
-  constructor(props) {
-    super(props);
 
-    // Initial state
-    this.state = {
-      books: [
-        { title: 'Title', category: 'Category' },
-        { title: 'How to hack NASA', category: 'Hacking' },
-        { title: 'Hacking Harvard', category: 'Hacking' },
-      ]
-    };}
+    API_URL = process.env.REACT_APP_API_URL;
+      constructor(props) {
+        super(props);
 
-    // Add a book function
-  addABook(title) {
-    const bookObject = {
-      title: title,
-      category: "false"
-    };
+          // Initialize the auth service with the path of the API authentication route.
+          this.Auth = new AuthService(`${this.API_URL}/users/authenticate`);
 
-    // This is setting a new state object with a new todoList
-    this.setState({
-      // old items + new items
-      books: [...this.state.books, bookObject]
-    });
-  }
+          // This is my state data initialized
+          this.state = {
+              categories: [],
+              userCredentials: [{ // TODO: These need to come from a React login component.
+                  //replace with login component that targets the state
+                  username: "Guillem",
+                  password: "***",
+                  admin: true
+              },
+                  {
+                      //replace with login component that targets the state
+                      username: "GGG",
+                      password: "password",
+                      admin: false
+                  }]
+          };
+      }
+    componentDidMount() {
 
-  render() {
-    return (
-        <div className="container">
+        this.getData();
+        // TODO: Do this from a login component instead
+        /*this.login(
+            this.state.userCredentials.username,
+            this.state.userCredentials.password);*/
+    }
 
-              <h4 className="display-4">Book List</h4>
-              <br/>
-              <table>
-                <List books={this.state.books}/>
-              </table>
-              <br/>
-              <AddABook addABook={(title) => this.addABook(title)}/>
-            </div>
+    async login(username, password) {
+        try {
+            const resp = await this.Auth.login(username, password);
+            console.log("Authentication:", resp.msg);
+            this.getData();
 
-    );}
+        } catch (e) {
+            console.log("Login", e);
+        }
+    }
+
+    async logout(event) {
+        event.preventDefault();
+        this.Auth.logout();
+        await this.setState({
+            userCredentials: [],
+            categories: []
+        });
+    }
+
+    async getData() {
+        const resp = await this.Auth.fetch(`${this.API_URL}/categories`);
+        const data = await resp.json();
+        this.setState({
+            categories: data
+        });
+    }
+
+
+    //method foe getting the questions
+    async getCategories() {
+        let url = `${this.API_URL}/categories`;
+        let result = await fetch(url); //get the data
+        let json = await result.json(); //turn data into JSON
+        return this.setState({
+            categories: json //set it in the state
+        })
+    }
+
+    //method for posting a question
+    async askCategory(category){
+
+        this.postData(category);
+    }
+    //the above method calls this method for the post request
+    async postData(category) {
+        let url = `${this.API_URL}/categories`;
+        fetch(url, {
+            method: "POST",
+            body: JSON.stringify({
+                category: category
+            }), headers : {
+                "Content-type" : "application/json",
+                Authorization : "Bearer " + this.Auth.getToken()
+            }
+        })
+            .then(res => res.json())
+            .then( json => {
+                this.getCategories();
+            })
+        //let result = await fetch(url); //get the data
+        //let json = await result.json(); //turn data into JSON
+        //return this.setState({
+        //  questions: json //set it in the state
+        //})
+    }
+
+    //the above method calls this method for the post request
+    async addBook(id, book) {
+        let url = `${this.API_URL}/categories/`
+            .concat(id)
+            .concat("/books");
+        fetch(url, {
+            method: "POST",
+            dataType: "json",
+            body: JSON.stringify({
+                book: book
+            }), headers : {
+                "Content-type" : "application/json",
+                Authorization : "Bearer " + this.Auth.getToken()
+            }
+        })
+            .then(res => res.json())
+            .then( json => {
+                this.getCategories();
+            })
+        //let result = await fetch(url); //get the data
+        //let json = await result.json(); //turn data into JSON
+        //return this.setState({
+        //  questions: json //set it in the state
+        //})
+    }
+
+    getCategory(id){
+        //find question by id
+        return this.state.categories.find(q => q._id === id)
+    }
+
+    render() {
+
+        console.log(this.state.userCredentials.admin);
+
+        return (
+
+            <React.Fragment>
+                <h1>Book shop</h1>
+
+                <div className="container">
+
+                    {(this.Auth.getUsername() === "elisa") ? <Navigation></Navigation> : 'Not admin user'}
+
+
+                    {this.Auth.getUsername() ?
+                        <small>Logged in: {this.Auth.getUsername()}.
+                            <Link to="/">Post a book</Link>
+                            <button
+                                onClick={(event) => {this.logout(event)}}>Logout.</button>
+                        </small>
+                        : <Login login={(username, password) => this.login(username, password)}/>}
+
+
+                </div>
+
+
+                <Router>
+
+                    <Categories path="/" categories={this.state.categories}
+                                askCategory={(text) => this.askCategory(text)}/>
+
+                    <Category
+                        addBook={(id, book) => this.addBook(id, book)}
+                        path="/category/:id"
+                        getCategory={id => this.getCategory(id)}>
+                    </Category>
+                    <Login
+                        path="/login" login={(username, password) => this.login(username, password) }>
+                    </Login>
+                    <Admin path="/admin"
+                           categories={this.state.categories}
+                           askCategory={(text) => this.askCategory(text)}></Admin>
+
+
+                </Router>
+
+            </React.Fragment>
+        )
+    }
 }
 
 export default App;
