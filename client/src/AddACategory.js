@@ -22,9 +22,6 @@ export default class AddACategory extends Component {
 
     handleButtonClick(event) {
         event.preventDefault();
-        this.props.onAddACategory = function (category) {
-
-        }
         this.props.onAddACategory(this.state.category);
         this.setState({category: ""});
     }
